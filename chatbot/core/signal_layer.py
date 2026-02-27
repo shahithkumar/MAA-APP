@@ -69,7 +69,14 @@ class SignalLayer:
         if any(kw in text_lower for kw in solve_keywords) or (q_type == "QUESTION" and any(w in text_lower for w in ["how", "should"])):
             intent = "SOLVE"
         
-        # 7. Detect Conclude Intent (NEW Step 1: Conclusion Mode)
+        # 7. Detect Action Preference (CALM vs TALK)
+        action_pref = "NONE"
+        if any(w in text_lower for w in ["calm", "relax", "technique", "breathing", "exercise", "grounding", "tool", "skill"]):
+            action_pref = "CALM"
+        elif any(w in text_lower for w in ["talk", "chat", "listen", "vent", "speak", "explain"]):
+            action_pref = "TALK"
+
+        # 8. Detect Conclude Intent (NEW Step 1: Conclusion Mode)
         conclude_keywords = ["solution", "conclusion", "what now", "final", "summary", "done", "wrap up", "stop", "end"]
         if any(kw in text_lower for kw in conclude_keywords):
             intent = "CONCLUDE"
@@ -81,5 +88,6 @@ class SignalLayer:
             "distortion": distortion,
             "hopelessness": hopelessness,
             "intent": intent,
-            "action_preference": "NONE"
+            "action_preference": action_pref,
+            "text": text # Pass text along if needed
         }

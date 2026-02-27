@@ -79,24 +79,11 @@ class _MAAChatScreenState extends State<MAAChatScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'session_id': _sessionId, 
-          'query': query,
-          'mode': _currentMode 
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _addMessage('bot', data['response']);
-      } else {
-        _addMessage('bot', 'I encountered a server error (${response.statusCode}). Please try again.');
-      }
+      final responseText = await _apiService.sendChatMessage(_sessionId, query, _currentMode);
+      _addMessage('bot', responseText);
     } catch (e) {
-      _addMessage('bot', 'I seem to be having trouble connecting. Please check your internet.');
+      _addMessage('bot', 'I encountered an error connecting to my cognitive layer. Please try again soon. ✨');
+      print('Chat Error: $e');
     } finally {
       setState(() => _isLoading = false);
     }

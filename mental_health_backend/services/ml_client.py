@@ -26,14 +26,14 @@ class MLClient:
         """
         try:
             files = {'file': ('face.jpg', image_file, 'image/jpeg')}
-            response = requests.post(f"{ML_SERVER_URL}/predict/face", files=files, timeout=5)
+            response = requests.post(f"{ML_SERVER_URL}/predict/face", files=files, timeout=30)
             if response.status_code == 200:
                 result = response.json()
-                return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0)
-            return "neutral", 0.0
+                return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0), result.get('normalized_probs', {})
+            return "neutral", 0.0, {}
         except Exception as e:
             print(f"ML Client Error (Face): {e}")
-            return "neutral", 0.0
+            return "neutral", 0.0, {}
 
     @staticmethod
     def predict_audio(audio_file):
@@ -43,14 +43,15 @@ class MLClient:
         """
         try:
             files = {'file': ('audio.wav', audio_file, 'audio/wav')}
-            response = requests.post(f"{ML_SERVER_URL}/predict/audio", files=files, timeout=10)
+            # Increased timeout to 180s to handle slow CPU inference (esp. on first run)
+            response = requests.post(f"{ML_SERVER_URL}/predict/audio", files=files, timeout=180)
             if response.status_code == 200:
                 result = response.json()
-                return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0)
-            return "neutral", 0.0
+                return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0), result.get('normalized_probs', {})
+            return "neutral", 0.0, {}
         except Exception as e:
             print(f"ML Client Error (Audio): {e}")
-            return "neutral", 0.0
+            return "neutral", 0.0, {}
 
     @staticmethod
     def predict_text(text):
@@ -59,14 +60,14 @@ class MLClient:
         """
         try:
             data = {'text': text}
-            response = requests.post(f"{ML_SERVER_URL}/predict/text", data=data, timeout=3)
+            response = requests.post(f"{ML_SERVER_URL}/predict/text", data=data, timeout=20)
             if response.status_code == 200:
                 result = response.json()
-                return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0)
-            return "neutral", 0.0
+                return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0), result.get('normalized_probs', {})
+            return "neutral", 0.0, {}
         except Exception as e:
             print(f"ML Client Error (Text): {e}")
-            return "neutral", 0.0
+            return "neutral", 0.0, {}
 
     @staticmethod
     def predict_multimodal(text=None, voice_file=None, face_file=None):
@@ -92,7 +93,8 @@ class MLClient:
             if not data and not files:
                 return "neutral", 0.0, {}
 
-            response = requests.post(f"{ML_SERVER_URL}/predict/multimodal", data=data, files=files, timeout=120)
+            # Extra long timeout for multimodal (up to 300s) to handle sequential cold-starts on slow CPUs
+            response = requests.post(f"{ML_SERVER_URL}/predict/multimodal", data=data, files=files, timeout=300)
             
             if response.status_code == 200:
                 full_result = response.json()

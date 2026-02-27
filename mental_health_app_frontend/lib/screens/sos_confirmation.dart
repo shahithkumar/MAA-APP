@@ -57,6 +57,10 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
   Future<void> _callGuardian(BuildContext context) async {
     try {
       final guardian = await ApiService().getGuardian();
+      if (guardian == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardian not found')));
+        return;
+      }
       final phone = guardian['phone_number'];
       final uri = Uri.parse('tel:$phone');
       if (await canLaunchUrl(uri)) {
@@ -92,6 +96,10 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
         );
         final locationUrl = 'https://maps.google.com/?q=${position.latitude},${position.longitude}';
         final guardian = await ApiService().getGuardian();
+        if (guardian == null) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardian not found')));
+          return;
+        }
         final phone = guardian['phone_number'];
         final uri = Uri.parse('sms:$phone?body=My current location: $locationUrl');
         if (await canLaunchUrl(uri)) {

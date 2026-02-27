@@ -56,9 +56,22 @@ class _GroundingScreenState extends State<GroundingScreen> {
     }
   }
 
+  bool _isSaving = false;
+
   Future<void> _logSession() async {
+    setState(() => _isSaving = true);
+    
+    // Show a loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+      ),
+    );
+
     try {
-      await _apiService.logGroundingSession(
+      final response = await _apiService.logGroundingSession(
         fiveSee: _fiveSeeController.text,
         fourTouch: _fourTouchController.text,
         threeHear: _threeHearController.text,
@@ -66,15 +79,74 @@ class _GroundingScreenState extends State<GroundingScreen> {
         oneTaste: _oneTasteController.text,
         feedback: _feedbackController.text,
       );
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Session saved!')));
-        Navigator.pop(context);
+        Navigator.pop(context); // close loading dialog
+        
+        final aiFeedback = response['feedback'];
+        if (aiFeedback != null && aiFeedback.toString().isNotEmpty) {
+           _showResponseModal(aiFeedback.toString());
+        } else {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Session saved!')));
+           Navigator.pop(context); // close screen
+        }
       }
     } catch (e) {
       if (mounted) {
+         Navigator.pop(context); // close loading dialog
          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Logging failed: $e')));
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
+  }
+
+  void _showResponseModal(String aiText) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(10))),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                const Icon(Icons.psychology_rounded, color: AppTheme.primaryColor, size: 28),
+                const SizedBox(width: 12),
+                Text("MAA's Reflection", style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  aiText,
+                  style: GoogleFonts.outfit(fontSize: 16, color: AppTheme.textDark, height: 1.6),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            GradientButton(
+              text: "Done",
+              onPressed: () {
+                Navigator.pop(context); // Close bottom sheet
+                Navigator.pop(context); // Close Grounding Screen
+              },
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -176,8 +248,8 @@ class _GroundingScreenState extends State<GroundingScreen> {
                   const SizedBox(height: 20),
                   
                   GradientButton(
-                    text: _step < 5 ? 'Next Step' : 'Finish Session',
-                    onPressed: _step < 5 || _step == 5 ? (_step < 5 ? _nextStep : _logSession) : () {},
+                    text: _isSaving ? 'Reflecting with MAA...' : (_step < 5 ? 'Next Step' : 'Finish Session'),
+                    onPressed: _isSaving ? () {} : (_step < 5 || _step == 5 ? (_step < 5 ? _nextStep : _logSession) : () {}),
                     icon: _step < 5 ? Icons.arrow_forward_rounded : Icons.check_rounded,
                   ),
                   // Keyboard spacer if needed, or rely on resizeToAvoidBottomInset

@@ -19,6 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   Map<String, dynamic>? _guardian;
   bool _isLoading = true;
+  bool _isEditing = false; // New flag for read-only mode
   String? _errorMessage;
 
   // Controllers for form fields
@@ -48,10 +49,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _guardian = guardian;
-          _nameController.text = guardian['name'] ?? '';
-          _relationshipController.text = guardian['relationship'] ?? '';
-          _phoneController.text = guardian['phone_number'] ?? '';
-          _emailController.text = guardian['email'] ?? '';
+          _nameController.text = guardian?['name'] ?? '';
+          _relationshipController.text = guardian?['relationship'] ?? '';
+          _phoneController.text = guardian?['phone_number'] ?? '';
+          _emailController.text = guardian?['email'] ?? '';
           _isLoading = false;
         });
       }
@@ -79,7 +80,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         email: _emailController.text,
       );
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _isEditing = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Guardian updated successfully')),
         );
@@ -254,23 +258,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                crossAxisAlignment: CrossAxisAlignment.start,
                                children: [
                                  Row(
+                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                    children: [
-                                     Container(
-                                       padding: const EdgeInsets.all(10),
-                                       decoration: BoxDecoration(
-                                         color: AppTheme.primaryColor.withOpacity(0.1),
-                                         shape: BoxShape.circle,
-                                       ),
-                                       child: const Icon(Icons.shield_rounded, color: AppTheme.primaryColor),
+                                     Row(
+                                       children: [
+                                         Container(
+                                           padding: const EdgeInsets.all(10),
+                                           decoration: BoxDecoration(
+                                             color: AppTheme.primaryColor.withOpacity(0.1),
+                                             shape: BoxShape.circle,
+                                           ),
+                                           child: const Icon(Icons.shield_rounded, color: AppTheme.primaryColor),
+                                         ),
+                                         const SizedBox(width: 12),
+                                         Text(
+                                           'Emergency Contact',
+                                           style: GoogleFonts.outfit(
+                                             fontSize: 18,
+                                             fontWeight: FontWeight.bold,
+                                             color: AppTheme.textDark,
+                                           ),
+                                         ),
+                                       ],
                                      ),
-                                     const SizedBox(width: 12),
-                                     Text(
-                                       'Emergency Contact',
-                                       style: GoogleFonts.outfit(
-                                         fontSize: 18,
-                                         fontWeight: FontWeight.bold,
-                                         color: AppTheme.textDark,
+                                     IconButton(
+                                       onPressed: () => setState(() => _isEditing = !_isEditing),
+                                       icon: Icon(
+                                         _isEditing ? Icons.close_rounded : Icons.edit_note_rounded,
+                                         color: _isEditing ? AppTheme.errorColor : AppTheme.primaryColor,
                                        ),
+                                       tooltip: _isEditing ? 'Cancel' : 'Edit Contact',
                                      ),
                                    ],
                                  ),
@@ -279,6 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                    controller: _nameController,
                                    hintText: 'Guardian Name',
                                    prefixIcon: Icons.person_outline,
+                                   enabled: _isEditing,
                                    validator: (value) => value!.isEmpty ? 'Required' : null,
                                  ),
                                  const SizedBox(height: 16),
@@ -286,6 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                    controller: _relationshipController,
                                    hintText: 'Relationship',
                                    prefixIcon: Icons.people_outline,
+                                   enabled: _isEditing,
                                    validator: (value) => value!.isEmpty ? 'Required' : null,
                                  ),
                                  const SizedBox(height: 16),
@@ -294,6 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                    hintText: 'Phone Number',
                                    prefixIcon: Icons.phone_outlined,
                                    keyboardType: TextInputType.phone,
+                                   enabled: _isEditing,
                                    validator: (value) => value!.isEmpty ? 'Required' : null,
                                  ),
                                  const SizedBox(height: 16),
@@ -302,6 +322,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                    hintText: 'Email',
                                    prefixIcon: Icons.email_outlined,
                                    keyboardType: TextInputType.emailAddress,
+                                   enabled: _isEditing,
                                    validator: (value) {
                                      if (value!.isEmpty) return 'Required';
                                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Invalid email';
@@ -310,10 +331,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                  ),
                                  const SizedBox(height: 30),
                                  GradientButton(
-                                   text: 'Update Guardian',
-                                   onPressed: _updateGuardian,
+                                   text: _isEditing ? 'Save Changes' : 'Edit Information',
+                                   onPressed: _isEditing ? _updateGuardian : () => setState(() => _isEditing = true),
                                    isLoading: _isLoading,
-                                   icon: Icons.check_circle_outline,
+                                   icon: _isEditing ? Icons.check_circle_outline : Icons.edit_rounded,
                                  ),
                                ],
                              ),

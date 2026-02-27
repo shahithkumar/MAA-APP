@@ -18,7 +18,7 @@ import 'profile.dart';
 import 'affirmations_home.dart';
 import 'cbt_therapy/cbt_topics_screen.dart';
 import 'resources_hub/disorder_selection.dart';
-import 'tri_modal_journal_screen.dart';
+import 'journal2_screen.dart';
 import 'maa_chat_screen.dart';
 import 'therapy/therapy_home_screen.dart';
 import 'therapy/art_therapy_home.dart';
@@ -67,11 +67,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _openTriModalJournal() {
+  void _openJournal2() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TriModalJournalScreen(cameras: []), 
+        builder: (context) => const Journal2Screen(cameras: []), 
       ),
     );
   }
@@ -79,7 +79,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: const Color(0xFFF4F7FB),
       body: Stack(
         children: [
           // 🌸 Background Decoration (Abstract Shapes)
@@ -166,11 +166,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6B8EFF), Color(0xFF90AFFF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primaryColor.withOpacity(0.3),
+                            color: const Color(0xFF6B8EFF).withOpacity(0.4),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -260,10 +264,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Journal
                       _buildMellowCard(
                         context,
-                        title: 'Journal',
+                        title: 'Journal 2',
                         imagePath: 'assets/images/icon_writing.png',
                         bgColor: AppTheme.softPink,
-                        onTap: _openTriModalJournal,
+                        onTap: _openJournal2,
                       ),
                       // Therapy Room
                       _buildMellowCard(
@@ -326,12 +330,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.4),
-                    blurRadius: 20,
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 25,
                     offset: const Offset(0, 10),
                   ),
                 ],
@@ -453,8 +457,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: bgColor,
+          gradient: LinearGradient(
+            colors: [
+              HSLColor.fromColor(bgColor).withLightness((HSLColor.fromColor(bgColor).lightness + 0.05).clamp(0.0, 1.0)).toColor(),
+              bgColor,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: bgColor.withOpacity(0.5),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Stack(
           children: [
@@ -506,10 +524,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: isActive ? BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: AppTheme.primaryColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
         ) : null,
-        child: Icon(icon, color: isActive ? AppTheme.accentColor : Colors.white.withOpacity(0.6), size: 28),
+        child: Icon(icon, color: isActive ? AppTheme.primaryColor : Colors.grey.withOpacity(0.6), size: 28),
       ),
     );
   }}

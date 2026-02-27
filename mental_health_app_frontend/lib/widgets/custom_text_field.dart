@@ -12,6 +12,9 @@ class CustomTextField extends StatelessWidget {
   final int maxLines;
   final  void Function(String)? onChanged;
 
+  final bool enabled;
+  final bool readOnly;
+
   const CustomTextField({
     Key? key,
     this.controller,
@@ -23,6 +26,8 @@ class CustomTextField extends StatelessWidget {
     this.validator,
     this.maxLines = 1,
     this.onChanged,
+    this.enabled = true,
+    this.readOnly = false,
   }) : super(key: key);
 
   @override
@@ -44,6 +49,8 @@ class CustomTextField extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        enabled: enabled,
+        readOnly: readOnly,
         validator: validator,
         maxLines: maxLines,
         onChanged: onChanged,

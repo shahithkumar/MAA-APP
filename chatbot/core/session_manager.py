@@ -135,22 +135,24 @@ class SessionFSM:
         elif self.state == State.VALIDATION:
             self.previous_state = self.state
             if mode == 'guide':
-                self.state = State.EXPLORATION # Guide: Validation -> Exploration
+                self.state = State.CHOICE # Guide: Validation -> Choice (Talk or Calm?)
             else:
                 self.state = State.EXPLORATION
             
         elif self.state == State.CHOICE:
             pref = signals.get("action_preference", "NONE")
             self.previous_state = self.state
-            if pref == "CALM" or user_wants_solution:
+            # Guide Mode: Move to solution if asked, or if it's already the 3rd user message
+            if pref == "CALM" or user_wants_solution or (mode == 'guide' and turn_count >= 3):
                 self.state = State.INTERVENTION
             else:
                 self.state = State.EXPLORATION
 
         elif self.state == State.EXPLORATION:
             self.explore_count += 1
-            # FIX: If turns > 2 (or explore_count >= 2) go to Intervention
-            if turn_count >= 2 or self.explore_count >= 2 or user_wants_solution or signals.get("distortion") != "none":
+            # Guide Mode: Stricter exploration limit to ensure solution by response 4
+            threshold = 2 if mode == 'guide' else 3
+            if turn_count >= 4 or self.explore_count >= threshold or user_wants_solution or signals.get("distortion") != "none":
                 self.previous_state = self.state
                 self.state = State.INTERVENTION
             

@@ -49,6 +49,7 @@ class AppTheme {
       
       // Font Family
       fontFamily: GoogleFonts.outfit().fontFamily,
+      fontFamilyFallback: const ['Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'],
       textTheme: GoogleFonts.outfitTextTheme().apply(
         bodyColor: textDark,
         displayColor: textDark,

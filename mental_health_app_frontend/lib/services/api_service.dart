@@ -8,15 +8,22 @@ import 'dart:typed_data';
 
 class ApiService {
   final _storage = const FlutterSecureStorage();
-  static String _baseUrl = 'http://192.168.48.146:8000'; 
+  static String _baseUrl = 'http://10.123.238.189:8000'; 
   String get baseUrl => _baseUrl;
 
   // Initialize URL from storage on startup
   Future<void> loadBaseUrl() async {
     final savedUrl = await _storage.read(key: 'server_ip');
     if (savedUrl != null && savedUrl.isNotEmpty) {
-      _baseUrl = savedUrl.trim();
-      print('✅ Loaded saved server URL: $_baseUrl');
+      // FORCE MIGRATION: If old IP is found, ignore it and use the new default
+      if (savedUrl.contains('10.64.217.189') || savedUrl.contains('192.168.48.146') || savedUrl.contains('192.168.48.147') || savedUrl.contains('192.168.61.204') || savedUrl.contains('192.168.48.177') || savedUrl.contains('10.20.228.189') || savedUrl.contains('10.142.80.189')) {
+        print('⚠️ Detected old invalid IP in storage. Overwriting with new default.');
+        await _storage.delete(key: 'server_ip'); // Clear it so it uses default
+        _baseUrl = 'http://10.123.238.189:8000'; // Enforce new one
+      } else {
+        _baseUrl = savedUrl.trim();
+        print('✅ Loaded saved server URL: $_baseUrl');
+      }
     }
   }
 
@@ -385,7 +392,7 @@ class ApiService {
     }
   }
 
-  Future<void> logGroundingSession({
+  Future<Map<String, dynamic>> logGroundingSession({
     required String fiveSee,
     required String fourTouch,
     required String threeHear,
@@ -414,6 +421,7 @@ class ApiService {
       if (response.statusCode != 201) {
         throw Exception('Logging failed: ${response.body}');
       }
+      return jsonDecode(response.body);
     } catch (e) {
       print('Log grounding session error: $e');
       rethrow;
@@ -515,26 +523,26 @@ class ApiService {
   }
 
   // MARK: Guardian
-  Future<Map<String, dynamic>> getGuardian() async {
+  Future<Map<String, dynamic>?> getGuardian() async {
     try {
       final token = await _storage.read(key: 'jwt_token');
-      if (token == null) throw Exception('No JWT token found');
+      if (token == null) return null;
+      
       final response = await http.get(
         Uri.parse('$_baseUrl/api/auth/guardian/'),
         headers: {'Authorization': 'Bearer $token'},
       );
+      
       if (response.statusCode == 200) {
         final List<dynamic> guardians = jsonDecode(response.body);
         if (guardians.isNotEmpty) {
-          return guardians[0];
+          return Map<String, dynamic>.from(guardians[0]);
         }
-        throw Exception('No guardian found');
-      } else {
-        throw Exception('Failed to load guardian: ${response.body}');
       }
+      return null; // Graceful return if no guardian exists
     } catch (e) {
       print('Get guardian error: $e');
-      rethrow;
+      return null;
     }
   }
 
@@ -967,7 +975,7 @@ Future<List<Map<String, dynamic>>> getMusicTracks(int categoryId) async {
       final tracks = List<Map<String, dynamic>>.from(data['tracks'] ?? []);
       
       // FIXED: Map 'audio_file' to 'audio_url' + build full URL
-      const String baseUrl = 'http://10.0.2.2:8000';  // Emulator; change for device
+      const String baseUrl = 'http://192.168.61.204:8000';  // Emulator; change for device
       for (var track in tracks) {
         String? audioPath = track['audio_file'] ?? track['audio_url'];
         if (audioPath != null && audioPath.isNotEmpty) {
@@ -1383,7 +1391,7 @@ Future<Map<String, dynamic>> saveTriModalJournal({
       );
     }
 
-    final response = await request.send().timeout(const Duration(seconds: 130));
+    final response = await request.send().timeout(const Duration(seconds: 300));
     final respStr = await response.stream.bytesToString();
 
     if (response.statusCode != 201) {
@@ -1401,6 +1409,80 @@ Future<Map<String, dynamic>> saveTriModalJournal({
   }
 }
 
+
+
+Future<Map<String, dynamic>?> analyzeFaceFrame(Uint8List imageBytes) async {
+  try {
+    final token = await _storage.read(key: 'jwt_token');
+    if (token == null) return null;
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/api/journal/2/face-track/'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(
+      http.MultipartFile.fromBytes('image', imageBytes, filename: 'frame.jpg')
+    );
+
+    final response = await request.send().timeout(const Duration(seconds: 15));
+    if (response.statusCode == 200) {
+      final respStr = await response.stream.bytesToString();
+      return jsonDecode(respStr);
+    }
+  } catch (e) {
+    print('Face analysis error: $e');
+  }
+  return null;
+}
+
+Future<Map<String, dynamic>> saveJournal2({
+  required String text,
+  Uint8List? voiceBytes,
+  String? faceBase64,
+  String? trackedFaceEmotion,
+}) async {
+  try {
+    final token = await _storage.read(key: 'jwt_token');
+    if (token == null) throw Exception('No JWT token found');
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/api/journal/2/'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['text'] = text;
+    if (faceBase64 != null) {
+      request.fields['image'] = faceBase64;
+    }
+    if (trackedFaceEmotion != null && trackedFaceEmotion.isNotEmpty) {
+      request.fields['tracked_face_emotion'] = trackedFaceEmotion;
+    }
+
+    if (voiceBytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'voice',
+          voiceBytes,
+          filename: "journal2_voice.wav",
+        ),
+      );
+    }
+
+    final response = await request.send().timeout(const Duration(seconds: 300));
+    final respStr = await response.stream.bytesToString();
+
+    if (response.statusCode == 201) {
+      return jsonDecode(respStr);
+    } else {
+      throw Exception('Failed to save Journal 2: $respStr');
+    }
+  } catch (e) {
+    print('saveJournal2 error: $e');
+    rethrow;
+  }
+}
 
   // MARK: Therapy Module (Music & Drawing)
   Future<List<dynamic>> getTherapySessions(String type) async {
@@ -1539,6 +1621,36 @@ Future<Map<String, dynamic>> saveTriModalJournal({
     } catch (e) {
       print('Get chat messages error: $e');
       return [];
+    }
+  }
+
+  Future<String> sendChatMessage(String sessionId, String query, String mode) async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
+      if (token == null) throw Exception('No JWT token found');
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/chat/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'session_id': sessionId,
+          'query': query,
+          'mode': mode,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['response'];
+      } else {
+        throw Exception('Chat failed: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Send chat message error: $e');
+      rethrow;
     }
   }
 }

@@ -342,6 +342,23 @@ class EmotionJournal(models.Model):
     def __str__(self):
         return f"Journal {self.id} - {self.final_emotion}"
 
+class Journal2Entry(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    text_content = models.TextField(blank=True)
+    voice_file = models.FileField(upload_to='journal2/voice/', null=True, blank=True)
+    face_capture = models.ImageField(upload_to='journal2/face/', null=True, blank=True)
+    
+    face_emotion = models.CharField(max_length=50, blank=True)
+    text_emotion = models.CharField(max_length=50, blank=True)
+    voice_emotion = models.CharField(max_length=50, blank=True)
+    final_emotion = models.CharField(max_length=50, blank=True)
+    
+    analysis_data = models.JSONField(null=True, blank=True) # Full AI/ML breakdown
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Journal2 - {self.user.username} - {self.final_emotion} ({self.created_at.date()})"
+
 # THERAPY MODELS (MUSIC & DRAWING)
 class TherapySession(models.Model):
     THERAPY_TYPES = [

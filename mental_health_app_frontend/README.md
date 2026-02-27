@@ -15,12 +15,41 @@ Path: C:\Users\shahi\OneDrive\Documents\Mental_Health_App_Backend\manage.py
 
 Command to run in Terminal:
 
-
 powershell
-python manage.py runserver
-
-flutter build apk --release
-& "C:\Users\shahi\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r "build\app\outputs\flutter-apk\app-release.apk"
-
-
 python manage.py runserver 0.0.0.0:8000
+
+---
+### 📱 CONNECTING YOUR MOBILE APP
+ Your computer's IP is: **10.123.238.189**
+ 
+ 1. Make sure your phone and laptop are on the SAME Wi-Fi.
+ 2. In the App Login Screen > Settings Icon ⚙️ > Enter: `http://10.123.238.189:8000`
+ 3. Click Save.
+
+---
+### 📦 BUILD & INSTALL COMMANDS
+
+1. **Build APK:**
+   Open a new terminal in VS Code and run:
+   ```powershell
+   cd mental_health_app_frontend
+   flutter clean
+   flutter pub get
+   flutter build apk --release
+   ```
+
+   **Option A: PowerShell (Default in VS Code)**
+   ```powershell
+   cd mental_health_app_frontend
+   & "C:\Users\shahi\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r "build\app\outputs\flutter-apk\app-release.apk"
+   ```
+
+   **Option B: Command Prompt (cmd)**
+   ```cmd
+   cd mental_health_app_frontend
+   "C:\Users\shahi\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r "build\app\outputs\flutter-apk\app-release.apk"
+   ```
+
+
+
+

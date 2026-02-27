@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 10),
             CustomTextField(
               controller: ipController,
-              hintText: 'http://192.168.48.146:8000',
+              hintText: 'http://10.123.238.189:8000',
             ),
           ],
         ),

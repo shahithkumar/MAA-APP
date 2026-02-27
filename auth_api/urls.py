@@ -33,7 +33,7 @@ from .views import (
     
     # Resources Hub (NEW)
     DisorderListView, DisorderDetailView, ArticleListView, CopingMethodListView, RoadmapView,VoiceEmotionView, TextEmotionView, FaceEmotionView, TriModalJournalView,
-    TherapySessionListView, TherapySessionDetailView, TherapyRecordCreateView
+    TherapySessionListView, TherapySessionDetailView, TherapyRecordCreateView, Journal2View, Journal2FaceTrackView
 )
 
 urlpatterns = [
@@ -144,4 +144,6 @@ urlpatterns = [
     # AI AFFIRMATIONS
     # ===========================
     path('affirmations/generate-ai/', GenerateAIAffirmationsView.as_view(), name='generate_ai_affirmations'),
+    path('journal/2/', Journal2View.as_view(), name='journal2'),
+    path('journal/2/face-track/', Journal2FaceTrackView.as_view(), name='journal2_face_track'),
 ]

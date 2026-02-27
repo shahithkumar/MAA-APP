@@ -364,6 +364,20 @@ class _AffirmationsHomeScreenState extends State<AffirmationsHomeScreen> {
                     style: GoogleFonts.outfit(fontSize: 22, fontStyle: FontStyle.italic, height: 1.4, color: AppTheme.textDark),
                     textAlign: TextAlign.center,
                   ),
+                  if (randomAff['category_name'] != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        randomAff['category_name'],
+                        style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

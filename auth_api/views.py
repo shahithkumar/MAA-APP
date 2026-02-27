@@ -14,6 +14,15 @@ from .models import EmotionJournal
 import speech_recognition as sr
 
 import tempfile
+import base64
+import numpy as np
+import cv2
+import json
+try:
+    from deepface import DeepFace
+except ImportError:
+    DeepFace = None
+
 from mental_health_backend.services.ml_client import ml_client # ✅ NEW ML CLIENT
 
 from django.http import JsonResponse
@@ -46,7 +55,7 @@ from .models import (
     UserPreferences, BackgroundMusic, CalmingSession, GroundingSession, 
     PanicSession, StressBusterSession, MoodLog, AffirmationCategory,
     GenericAffirmation, CustomAffirmation, AffirmationTemplate, MusicCategory, MusicTrack,  MusicSession, CBTTopic, CBTSession, Disorder, Article, CopingMethod, RoadmapStep,EmotionJournal,
-    TherapySession, TherapyRecord, ReflectionQuestion, TherapyRecordAnswer # ✅ ADDED Therapy Models
+    TherapySession, TherapyRecord, ReflectionQuestion, TherapyRecordAnswer, Journal2Entry # ✅ ADDED Therapy Models
 )
 from .serializers import (
     UserProfileSerializer, GuardianSerializer, CategorySerializer,
@@ -499,13 +508,59 @@ class GroundingSessionView(APIView):
 
     def post(self, request):
         try:
+            from langchain_groq import ChatGroq
+            import os
+            
             data = request.data.copy()
             data['user'] = request.user.id
             data['end_time'] = timezone.now()
             serializer = GroundingSessionSerializer(data=data)
             if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                session = serializer.save()
+                
+                # --- AI FB START --- 
+                # (Pattern matching Stress Buster to give user a 'SOLUTION')
+                try:
+                    prompt = f"""
+                    You are a compassionate mental health AI (MAA).
+                    
+                    USER SESSION:
+                    - Type: Grounding Exercise (5-4-3-2-1 Technique)
+                    - 5 things they saw: "{session.five_see}"
+                    - 4 things they touched: "{session.four_touch}"
+                    - 3 things they heard: "{session.three_hear}"
+                    - 2 things they smelled: "{session.two_smell}"
+                    - 1 thing they tasted: "{session.one_taste}"
+                    
+                    TASK:
+                    1. ANALYZE: Briefly explain why their focus on these specific surroundings helps them center themselves.
+                    2. SOLUTION: Provide one actionable, tailored coping strategy or solution to handle the stress they were feeling.
+                    
+                    TONE: Compassionate, calm, and practical.
+                    FORMAT: Use a clear "Analysis" and "Proposed Solution" structure. Keep it meaningful.
+                    """
+                    
+                    llm = ChatGroq(
+                        api_key=settings.GROQ_API_KEY,
+                        model_name=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+                        temperature=0.7
+                    )
+                    
+                    response = llm.invoke(prompt)
+                    session.feedback = response.content.strip()
+                    session.save()
+                    
+                    # Return updated response with AI solution
+                    return Response({
+                        **serializer.data,
+                        'feedback': session.feedback
+                    }, status=status.HTTP_201_CREATED)
+                    
+                except Exception as ai_e:
+                    print(f"❌ AI Grounding Analysis Error: {ai_e}")
+                    # Return success even if AI fails, just without feedback
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -656,15 +711,18 @@ class StressBusterSessionView(APIView):
                         response = llm.invoke(prompt)
                         feedback = response.content.strip()
                         
-                        # Save feedback
+                        # Save transcription and feedback
                         session.feedback = feedback
+                        if transcription and not session.note_text:
+                            session.note_text = f"[Audio Transcription]: {transcription}"
                         session.save()
                         
                         # Return updated data
                         return Response({
                             **serializer.data,
                             'feedback': feedback,
-                            'transcription': transcription
+                            'transcription': transcription,
+                            'note_text': session.note_text
                         }, status=status.HTTP_201_CREATED)
                         
                 except Exception as ai_e:
@@ -1254,8 +1312,84 @@ class RandomAffirmationView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        """Get a completely random affirmation (generic + custom mix)"""
+        """Get a completely random affirmation OR generate one using AI based on chat history"""
         try:
+            from chatbot.models import ChatMessage, ChatSession
+            from langchain_groq import ChatGroq
+            
+            # 🤖 AI PATH: Try to generate based on chat history
+            try:
+                print("DEBUG [RandomAffirmationView]: Entering AI generation path.")
+                # Find the user's most recent active chat session
+                latest_session = ChatSession.objects.filter(user=request.user).order_by('-updated_at').first()
+                print(f"DEBUG [RandomAffirmationView]: Latest session for user {request.user.username}: {latest_session}")
+                
+                if latest_session:
+                    # Get recent messages to understand context (last 8 is usually enough)
+                    messages = ChatMessage.objects.filter(session=latest_session).order_by('-timestamp')[:8]
+                    print(f"DEBUG [RandomAffirmationView]: Found {messages.count()} recent messages in session.")
+                    
+                    if messages.exists():
+                        # Reverse to get chronological order for the AI
+                        history_msgs = list(messages)[::-1]
+                        history_str = "\n".join([f"{m.sender.upper()}: {m.content}" for m in history_msgs])
+                        print(f"DEBUG [RandomAffirmationView]: History string constructed.")
+                        
+                        # Call LLM for a personalized booster
+                        prompt = f"""
+                        You are a deeply empathetic AI companion. 
+                        
+                        CONTEXT (Recent user chat messages):
+                        {history_str}
+                        
+                        TASK:
+                        Based on the user's current vibe and what they've been sharing with the chatbot, generate ONE powerful, short, and highly personalized affirmation. 
+                        
+                        RULES:
+                        1. Return ONLY the affirmation text. No quotes.
+                        2. No introductory filler like "Your affirmation is...".
+                        3. Make it hyper-relevant to their current situation (e.g., if mourning, focus on gentle healing; if stressed, focus on inner strength).
+                        4. Maximum 20 words.
+                        """
+                        
+                        import os
+                        from django.conf import settings
+                        from langchain_groq import ChatGroq
+                        
+                        print("DEBUG [RandomAffirmationView]: Initializing ChatGroq.")
+                        llm = ChatGroq(
+                            api_key=settings.GROQ_API_KEY,
+                            model_name=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+                            temperature=0.8
+                        )
+                        
+                        print("DEBUG [RandomAffirmationView]: Invoking LLM.")
+                        response = llm.invoke(prompt)
+                        ai_text = response.content.strip().strip('"').strip()
+                        print(f"DEBUG [RandomAffirmationView]: LLM response received. Text length: {len(ai_text)}")
+                        
+                        if ai_text and len(ai_text) > 5:
+                            return Response({
+                                'affirmation': {
+                                    'text': ai_text,
+                                    'category_name': 'AI For You ✨'
+                                },
+                                'type': 'ai_personalized'
+                            })
+                        else:
+                            print("DEBUG [RandomAffirmationView]: LLM generated text was too short or empty.")
+                    else:
+                        print("DEBUG [RandomAffirmationView]: No recent messages found. Cannot perform AI generation.")
+                else:
+                    print("DEBUG [RandomAffirmationView]: No active chat session found.")
+            except Exception as ai_e:
+                import traceback
+                # Log AI error but don't fail the request - fallback to random
+                print(f"DEBUG [RandomAffirmationView]: Personalized AI Affirmation failed: {ai_e}")
+                print(traceback.format_exc())
+
+            # 🔄 FALLBACK PATH: Existing Random Logic
+            print("DEBUG [RandomAffirmationView]: Falling back to generic/custom random logic.")
             # Get some generic affirmations
             generic_affs = list(GenericAffirmation.objects.filter(is_active=True))
             # Get user's custom affirmations
@@ -1265,18 +1399,22 @@ class RandomAffirmationView(APIView):
             
             if not all_affs:
                 return Response({
-                    'message': 'No affirmations available. Add some categories and affirmations in admin!'
+                    'message': 'No affirmations available yet. Try chatting with MAA first!'
                 }, status=status.HTTP_200_OK)
             
             random_aff = random.choice(all_affs)
             
             if isinstance(random_aff, GenericAffirmation):
                 serializer = GenericAffirmationSerializer(random_aff)
+                data = serializer.data
+                data['text'] = data.get('text') # Ensure 'text' key exists
             else:
                 serializer = CustomAffirmationSerializer(random_aff)
-            
+                data = serializer.data
+                data['text'] = data.get('affirmation_text') # Map to common key
+
             return Response({
-                'affirmation': serializer.data,
+                'affirmation': data,
                 'type': 'generic' if isinstance(random_aff, GenericAffirmation) else 'custom'
             })
         except Exception as e:
@@ -1465,7 +1603,7 @@ class VoiceEmotionView(APIView):
             if not audio_file:
                 return Response({'error': 'No audio file provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-            emotion, confidence = ml_client.predict_audio(audio_file)
+            emotion, confidence, _ = ml_client.predict_audio(audio_file)
             
             EmotionLog.objects.create(modality="voice", emotion=emotion, confidence=confidence)
             return Response({"emotion": emotion, "confidence": round(confidence, 3)})
@@ -1482,7 +1620,7 @@ class TextEmotionView(APIView):
         if not text:
             return Response({"error": "No text sent"}, status=400)
 
-        emotion, confidence = ml_client.predict_text(text)
+        emotion, confidence, _ = ml_client.predict_text(text)
 
         EmotionLog.objects.create(modality="text", emotion=emotion, confidence=confidence)
         return Response({"emotion": emotion, "confidence": round(confidence, 3)})
@@ -1499,10 +1637,181 @@ class FaceEmotionView(APIView):
         if not img_file:
              return Response({"error": "No image file"}, status=400)
 
-        emotion, confidence = ml_client.predict_face(img_file)
+        emotion, confidence, _ = ml_client.predict_face(img_file)
 
         EmotionLog.objects.create(modality="face", emotion=emotion, confidence=confidence)
         return Response({"emotion": emotion, "confidence": round(confidence, 3)})
+
+# ========================
+# ========================
+# JOURNAL 2 - DEEP MULTI-MODAL & TRACKING
+# ========================
+
+class Journal2FaceTrackView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        try:
+            img_file = request.FILES.get('image')
+            if not img_file or not DeepFace:
+                return Response({'emotion': 'neutral'}, status=status.HTTP_200_OK)
+
+            import numpy as np
+            import cv2
+            
+            img_bytes = img_file.read()
+            img_np = np.frombuffer(img_bytes, np.uint8)
+            frame = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
+
+            result = DeepFace.analyze(
+                frame,
+                actions=['emotion'],
+                enforce_detection=False
+            )
+            dominant = result[0]['dominant_emotion']
+            print(f"DeepFace Continuous Tracked Emotion: {dominant.upper()}")
+            
+            return Response({'emotion': dominant}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"J2 Continuous Face Error: {e}")
+            return Response({'emotion': 'neutral'}, status=status.HTTP_200_OK)
+
+
+class Journal2View(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        try:
+            image_data = request.data.get("image") # Base64 string
+            text = request.data.get("text", "")
+            voice_file = request.FILES.get("voice") # Uploaded audio file
+
+            face_emotion = "neutral"
+            text_emotion = "neutral"
+            voice_emotion = "neutral"
+            
+            tracked_face_emotion_raw = request.data.get("tracked_face_emotion")
+
+            face_raw_probs = {}
+            # 1. Process Face (DeepFace) - Using USER's logic
+            if tracked_face_emotion_raw and tracked_face_emotion_raw != "neutral" and tracked_face_emotion_raw != "null":
+                # Use continuous tracking average from frontend (CSV string of multiple frames)
+                emotions_list = [e.strip() for e in tracked_face_emotion_raw.split(',') if e.strip() and e.strip() != "neutral"]
+                
+                if emotions_list:
+                    from collections import Counter
+                    c = Counter(emotions_list)
+                    face_emotion = c.most_common(1)[0][0]
+                    total = sum(c.values())
+                    for emo, count in c.items():
+                        face_raw_probs[emo] = count / total
+                else:
+                    face_emotion = tracked_face_emotion_raw # Fallback if single string
+            elif image_data and DeepFace:
+                try:
+                    import base64
+                    import io
+                    # Convert base64 → image bytes
+                    if ',' in image_data:
+                        img_str = image_data.split(',')[1]
+                    else:
+                        img_str = image_data
+                        
+                    img_bytes = base64.b64decode(img_str)
+                    img_np = np.frombuffer(img_bytes, np.uint8)
+                    frame = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
+
+                    # Face emotion
+                    result = DeepFace.analyze(
+                        frame,
+                        actions=['emotion'],
+                        enforce_detection=False
+                    )
+                    face_emotion = result[0]['dominant_emotion']
+                        
+                except Exception as e:
+                    print(f"Journal2 Face Error: {e}")
+
+            # 2. Process Text (Existing ML Model / FastAPI)
+            text_raw_probs = {}
+            if text:
+                ext_emotion, _, text_raw_probs = ml_client.predict_text(text)
+                text_emotion = ext_emotion
+
+            # 3. Process Voice (Existing ML Model)
+            voice_raw_probs = {}
+            if voice_file:
+                ext_v_emotion, _, voice_raw_probs = ml_client.predict_audio(voice_file)
+                voice_emotion = ext_v_emotion
+
+            # Final Fusion Logic per USER: Weighted Average / Mode of available signals
+            valid_emotions = []
+            if face_emotion and face_emotion != "neutral":
+                valid_emotions.append(face_emotion)
+            if voice_emotion and voice_emotion != "neutral":
+                valid_emotions.append(voice_emotion)
+            if text_emotion and text_emotion != "neutral":
+                valid_emotions.append(text_emotion)
+            
+            if not valid_emotions:
+                final_emotion = "neutral"
+            else:
+                from collections import Counter
+                c = Counter(valid_emotions)
+                most_common = c.most_common(1)[0]
+                
+                # If there is a tie, we prioritize Text > Voice > Face.
+                # Since valid_emotions was populated in order [face, voice, text], 
+                # resolving ties by taking the last element effectively achieves this priority.
+                if most_common[1] == 1 and len(valid_emotions) > 1:
+                    final_emotion = valid_emotions[-1] # Grabs text (if present) or voice
+                else:
+                    final_emotion = most_common[0]
+
+            # Save the entry
+            entry = Journal2Entry.objects.create(
+                user=request.user,
+                text_content=text,
+                voice_file=voice_file,
+                face_emotion=face_emotion,
+                text_emotion=text_emotion,
+                voice_emotion=voice_emotion,
+                final_emotion=final_emotion,
+                analysis_data={
+                    "face": face_emotion,
+                    "text": text_emotion,
+                    "voice": voice_emotion
+                }
+            )
+
+            return Response({
+                "id": entry.id,
+                "face_emotion": face_emotion,
+                "text_emotion": text_emotion,
+                "voice_emotion": voice_emotion,
+                "final_emotion": final_emotion,
+                "components": {
+                    "face": {"raw_probs": face_raw_probs if face_raw_probs else {face_emotion: 1.0}},
+                    "text": {"raw_probs": text_raw_probs if text_raw_probs else {text_emotion: 1.0}},
+                    "voice": {"raw_probs": voice_raw_probs if voice_raw_probs else {voice_emotion: 1.0}}
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
+        """Get history of Journal 2 entries"""
+        entries = Journal2Entry.objects.filter(user=request.user).order_by('-created_at')[:10]
+        data = [{
+            "id": e.id,
+            "final_emotion": e.final_emotion,
+            "text_content": e.text_content[:50] + "..." if len(e.text_content) > 50 else e.text_content,
+            "created_at": e.created_at
+        } for e in entries]
+        return Response(data)
 class TriModalJournalView(APIView):
     parser_classes = [MultiPartParser]
 
