@@ -19,8 +19,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isStressMode = false;
   
   String get _apiUrl => _isStressMode 
-      ? 'http://127.0.0.1:8000/api/doc-chat/' 
-      : 'http://127.0.0.1:8000/api/chat/';
+      ? 'http://10.123.238.189:8000/api/doc-chat/' 
+      : 'http://10.123.238.189:8000/api/chat/';
   
   // Theme Colors
   Color get _accentColor => _isStressMode ? const Color(0xFF00FF41) : Colors.white; // Neon Green or Pure White

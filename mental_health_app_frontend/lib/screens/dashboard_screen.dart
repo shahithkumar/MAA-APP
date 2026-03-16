@@ -11,6 +11,7 @@ import '../data/feature_content.dart';
 import 'calming_screen.dart';
 import 'meditation_yoga_screen.dart';
 import 'mood_tracker.dart';
+import 'mood_journal.dart';
 import 'sos_button.dart';
 import 'sos_confirmation.dart';
 import 'stress_buster_screen.dart';
@@ -398,51 +399,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildMoodSelector() {
-    final moods = [
-      {'val': 'happy', 'img': 'assets/images/mood_joy.png', 'label': 'Happy'},
-      {'val': 'sad', 'img': 'assets/images/mood_sad.png', 'label': 'Sad'},
-      {'val': 'calm', 'img': 'assets/images/mood_calm.png', 'label': 'Calm'},
-      {'val': 'angry', 'img': 'assets/images/mood_angry.png', 'label': 'Angry'},
-      {'val': 'tired', 'img': 'assets/images/mood_tired.png', 'label': 'Tired'},
-    ];
-
-    return SizedBox(
-      height: 90,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: moods.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 16),
-        itemBuilder: (context, index) {
-          final m = moods[index];
-          return GestureDetector(
-            onTap: () async {
-              // Navigate to mood tracker
-              await Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (context) => const MoodTrackerScreen())
-              );
-              _fetchMoodData();
-            },
-            child: Column(
-              children: [
-                Container(
-                  height: 60,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(image: AssetImage(m['img']!), fit: BoxFit.cover),
-                    boxShadow: [
-                       BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                    ]
-                  ),
+    return Row(
+      children: [
+        // 1. Mood Tracker Button
+        GestureDetector(
+          onTap: () async {
+            // Navigate to mood tracker
+            await Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const MoodTrackerScreen())
+            );
+            _fetchMoodData();
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                height: 60,
+                width: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  image: const DecorationImage(image: AssetImage('assets/images/mood_joy.png'), fit: BoxFit.cover),
+                  boxShadow: [
+                     BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  ]
                 ),
-                const SizedBox(height: 8),
-                Text(m['label']!, style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+              const SizedBox(height: 8),
+              Text("Track Mood", style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
+            ],
+          ),
+        ),
+        
+        const SizedBox(width: 24),
+        
+        // 2. Mood Calendar / History Button
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const MoodJournalScreen())
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                height: 60,
+                width: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  boxShadow: [
+                     BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  ]
+                ),
+                child: const Icon(Icons.calendar_month_rounded, color: AppTheme.primaryColor, size: 28),
+              ),
+              const SizedBox(height: 8),
+              Text("Mood Calendar", style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

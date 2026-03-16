@@ -975,12 +975,11 @@ Future<List<Map<String, dynamic>>> getMusicTracks(int categoryId) async {
       final tracks = List<Map<String, dynamic>>.from(data['tracks'] ?? []);
       
       // FIXED: Map 'audio_file' to 'audio_url' + build full URL
-      const String baseUrl = 'http://192.168.61.204:8000';  // Emulator; change for device
       for (var track in tracks) {
         String? audioPath = track['audio_file'] ?? track['audio_url'];
         if (audioPath != null && audioPath.isNotEmpty) {
           if (!audioPath.startsWith('http')) {
-            track['audio_url'] = '$baseUrl$audioPath';  // Full URL for player
+            track['audio_url'] = '$_baseUrl$audioPath';  // Full URL for player
           } else {
             track['audio_url'] = audioPath;
           }

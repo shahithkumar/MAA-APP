@@ -10,7 +10,9 @@ import '../widgets/gradient_button.dart';
 import '../widgets/custom_text_field.dart';
 
 class MoodTrackerScreen extends StatefulWidget {
-  const MoodTrackerScreen({super.key});
+  final String? initialMood;
+
+  const MoodTrackerScreen({super.key, this.initialMood});
 
   @override
   _MoodTrackerScreenState createState() => _MoodTrackerScreenState();
@@ -37,7 +39,30 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
     {'val': 'excited', 'icon': '🤩', 'label': 'Excited', 'color': Colors.yellow},
   ];
 
-  Future<void> _saveMood() async {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialMood != null) {
+      final initial = widget.initialMood!.toLowerCase();
+      // Try to find a matching mood by value or label
+      try {
+        final mood = _moods.firstWhere((m) => 
+            m['val'].toString().toLowerCase() == initial || 
+            m['label'].toString().toLowerCase() == initial);
+        _selectedMoodVal = mood['val'];
+        _selectedMoodLabel = mood['label'];
+        
+        // Auto-save the mood when arriving from Journal 2
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _saveMood(isAutoSave: true);
+        });
+      } catch (e) {
+        // Initial mood not found in our list, just stay null
+      }
+    }
+  }
+
+  Future<void> _saveMood({bool isAutoSave = false}) async {
     if (_selectedMoodVal == null) return;
 
     setState(() => _isLoading = true);
@@ -51,16 +76,24 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mood logged successfully')),
+          SnackBar(
+            content: Text(isAutoSave ? 'Mood auto-saved from Journal!' : 'Mood logged successfully'),
+            backgroundColor: AppTheme.successColor,
+          ),
         );
-        _noteController.clear();
-        setState(() {
-          _selectedMoodVal = null;
-          _selectedMoodLabel = null;
-          _selectedTag = null;
-          _isLoading = false;
-        });
-        Navigator.pop(context);
+        
+        if (!isAutoSave) {
+          _noteController.clear();
+          setState(() {
+            _selectedMoodVal = null;
+            _selectedMoodLabel = null;
+            _selectedTag = null;
+            _isLoading = false;
+          });
+          Navigator.pop(context);
+        } else {
+          setState(() => _isLoading = false);
+        }
       }
     } catch (e) {
       if (mounted) {

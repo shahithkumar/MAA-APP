@@ -17,6 +17,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/gradient_button.dart';
+import 'mood_tracker.dart';
 
 class Journal2Screen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -482,10 +483,15 @@ class _Journal2ScreenState extends State<Journal2Screen> with TickerProviderStat
   
                  const SizedBox(height: 40), 
                  GradientButton(
-                   text: "Complete",
+                   text: "Complete & Track Mood",
                    onPressed: () {
                      Navigator.pop(context); // Close modal
                      Navigator.pop(context); // Go back to home/dashboard
+                     // Navigate to mood tracker so user sees connection immediately
+                     Navigator.push(
+                       context,
+                       MaterialPageRoute(builder: (context) => MoodTrackerScreen(initialMood: _finalEmotion)),
+                     );
                    },
                  ),
                  const SizedBox(height: 16),

@@ -1372,7 +1372,7 @@ class RandomAffirmationView(APIView):
                             return Response({
                                 'affirmation': {
                                     'text': ai_text,
-                                    'category_name': 'AI For You ✨'
+                                    'category_name': 'MAA For You ✨'
                                 },
                                 'type': 'ai_personalized'
                             })
