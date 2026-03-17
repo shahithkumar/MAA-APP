@@ -37,7 +37,6 @@ from .models import EmotionJournal
 import speech_recognition as sr
 
 import tempfile
-from transformers import pipeline
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.mail import send_mail

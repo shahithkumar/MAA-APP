@@ -1,7 +1,7 @@
 import os
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, PromptTemplate
 from llama_index.llms.groq import Groq
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -62,8 +62,8 @@ def _initialize_engine():
             
         llm = Groq(model="llama-3.1-8b-instant", api_key=groq_api_key)
         
-        # 2. Setup Embeddings (Local HuggingFace - Free/Fast)
-        embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # 2. Setup Embeddings (FastEmbed - ~100x lighter than local torch huggingface, fits in 512MB RAM)
+        embed_model = FastEmbedEmbedding(model_name="BAAI/bge-small-en-v1.5")
         
         # 3. Configure Global Settings
         Settings.llm = llm

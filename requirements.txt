@@ -14,19 +14,9 @@ langchain-groq
 python-dotenv
 llama-index
 llama-index-llms-groq
-llama-index-embeddings-huggingface
-sentence-transformers
+fastembed
+llama-index-embeddings-fastembed
 requests
 gunicorn
 whitenoise
 dj-database-url
-
-# ML Server Dependencies
-fastapi>=0.109.0
-uvicorn>=0.27.0
-torch>=2.2.0
-transformers>=4.41.0
-python-multipart
-numpy<2.0
-soundfile
-librosa
