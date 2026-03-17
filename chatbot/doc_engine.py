@@ -43,45 +43,60 @@ REFINE_PROMPT_TMPL = (
 )
 REFINE_PROMPT = PromptTemplate(REFINE_PROMPT_TMPL)
 
-try:
-    # 1. Setup LLM (Groq - Llama 3)
-    # Using Llama 3.1 8b Instant for speed and quality
-    groq_api_key = os.getenv("GROQ_API_KEY")
-    if not groq_api_key:
-        raise ValueError("GROQ_API_KEY not found in .env")
+# Global variables to hold singletons
+query_engine = None
+is_initialized = False
+
+def _initialize_engine():
+    global query_engine, is_initialized
+    if is_initialized:
+        return
         
-    llm = Groq(model="llama-3.1-8b-instant", api_key=groq_api_key)
-    
-    # 2. Setup Embeddings (Local HuggingFace - Free/Fast)
-    embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    
-    # 3. Configure Global Settings
-    Settings.llm = llm
-    Settings.embed_model = embed_model
-    
-    # 4. Load Data & Create Index
-    if os.path.exists("data"):
-        print("📂 Found 'data' folder. Loading documents... (This may take a moment)")
-        documents = SimpleDirectoryReader("data").load_data()
-        print(f"✅ Loaded {len(documents)} documents. Creating AI Index... (This involves heavy processing)")
-        index = VectorStoreIndex.from_documents(documents)
-        print("✅ AI Index created successfully!")
+    try:
+        # 1. Setup LLM (Groq - Llama 3)
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        if not groq_api_key:
+            print("GROQ_API_KEY not found in .env")
+            is_initialized = True
+            return
+            
+        llm = Groq(model="llama-3.1-8b-instant", api_key=groq_api_key)
         
-        # 5. Create Query Engine with Custom Persona Prompts
-        query_engine = index.as_query_engine(
-            text_qa_template=QA_PROMPT,
-            refine_template=REFINE_PROMPT,
-            streaming=False
-        )
-    else:
-        print("Data directory not found.")
-        query_engine = None
+        # 2. Setup Embeddings (Local HuggingFace - Free/Fast)
+        embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
         
-except Exception as e:
-    print(f"Error setting up Doc Engine: {e}")
-    query_engine = None
+        # 3. Configure Global Settings
+        Settings.llm = llm
+        Settings.embed_model = embed_model
+        
+        # 4. Load Data & Create Index
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+        if os.path.exists(data_dir) or os.path.exists("data"):
+            path_to_use = data_dir if os.path.exists(data_dir) else "data"
+            print(f"📂 Loading documents from {path_to_use}...")
+            documents = SimpleDirectoryReader(path_to_use).load_data()
+            print(f"✅ Loaded {len(documents)} documents. Creating AI Index...")
+            index = VectorStoreIndex.from_documents(documents)
+            print("✅ AI Index created successfully!")
+            
+            # 5. Create Query Engine
+            query_engine = index.as_query_engine(
+                text_qa_template=QA_PROMPT,
+                refine_template=REFINE_PROMPT,
+                streaming=False
+            )
+        else:
+            print("Data directory not found.")
+            
+    except Exception as e:
+        print(f"Error setting up Doc Engine: {e}")
+        
+    finally:
+        is_initialized = True
 
 def query_documents(user_query: str) -> str:
+    _initialize_engine()
+    
     if not query_engine:
         return "Error: Document engine not ready. Check logs/data folder."
     
