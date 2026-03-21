@@ -43,14 +43,20 @@ class MLClient:
         """
         try:
             files = {'file': ('audio.wav', audio_file, 'audio/wav')}
+            print(f"🎵 [ML_CLIENT] Sending AUDIO to {ML_SERVER_URL}/predict/audio ...")
             # Increased timeout to 180s to handle slow CPU inference (esp. on first run)
             response = requests.post(f"{ML_SERVER_URL}/predict/audio", files=files, timeout=180)
+            print(f"🎵 [ML_CLIENT] Received response from ML Server! Status: {response.status_code}")
+            
             if response.status_code == 200:
                 result = response.json()
+                print(f"🎵 [ML_CLIENT] Audio Prediction: {result}")
                 return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0), result.get('normalized_probs', {})
+            else:
+                print(f"❌ [ML_CLIENT] Audio Prediction Failed! Server Said: {response.text}")
             return "neutral", 0.0, {}
         except Exception as e:
-            print(f"ML Client Error (Audio): {e}")
+            print(f"❌ [ML_CLIENT] CRITICAL Error (Audio): Could not connect to {ML_SERVER_URL}. Exception: {e}")
             return "neutral", 0.0, {}
 
     @staticmethod
@@ -60,13 +66,19 @@ class MLClient:
         """
         try:
             data = {'text': text}
+            print(f"🤖 [ML_CLIENT] Sending TEXT to {ML_SERVER_URL}/predict/text ...")
             response = requests.post(f"{ML_SERVER_URL}/predict/text", data=data, timeout=20)
+            print(f"🤖 [ML_CLIENT] Received response from ML Server! Status: {response.status_code}")
+            
             if response.status_code == 200:
                 result = response.json()
+                print(f"🤖 [ML_CLIENT] Text Prediction: {result}")
                 return result.get('dominant_emotion', 'neutral'), result.get('confidence', 0.0), result.get('normalized_probs', {})
+            else:
+                print(f"❌ [ML_CLIENT] Text Prediction Failed! Server Said: {response.text}")
             return "neutral", 0.0, {}
         except Exception as e:
-            print(f"ML Client Error (Text): {e}")
+            print(f"❌ [ML_CLIENT] CRITICAL Error (Text): Could not connect to {ML_SERVER_URL}. Exception: {e}")
             return "neutral", 0.0, {}
 
     @staticmethod
