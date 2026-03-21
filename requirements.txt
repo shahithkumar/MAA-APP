@@ -20,3 +20,4 @@ requests
 gunicorn
 whitenoise
 dj-database-url
+django-anymail[sendgrid]
