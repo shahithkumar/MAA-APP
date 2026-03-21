@@ -61,7 +61,9 @@ class SessionFSM:
         if not is_short:
             try:
                 summary_prompt = f"Summarize the user's core psychological issue or event in ONE short sentence: \"{text}\""
-                summary = self.llm.predict(summary_prompt).strip()
+                # Fix: using invoke() instead of predict() for ChatGroq
+                response = self.llm.invoke(summary_prompt)
+                summary = response.content.strip()
                 self.core_context["story"] = summary
             except Exception as e:
                 print(f"Memory update error: {e}")
