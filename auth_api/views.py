@@ -863,13 +863,13 @@ class SOSView(APIView):
             )
             
             print("📧 Attempting to send high-priority HTML email...")
-            print(f"From: {settings.EMAIL_HOST_USER}")
+            print(f"From: {settings.DEFAULT_FROM_EMAIL}")
             print(f"To: {guardian.email}")
             
             send_mail(
                 subject,
                 plain_message,
-                settings.EMAIL_HOST_USER,
+                settings.DEFAULT_FROM_EMAIL,
                 [guardian.email],
                 fail_silently=False,
                 html_message=html_message
