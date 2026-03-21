@@ -135,10 +135,13 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True  # Development only
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Render's free tier blocks all outbound email ports (587, 465, 25). 
+# To prevent the server from hanging and crashing, we log the emails to the console instead.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+EMAIL_TIMEOUT = 5
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'shahithu2004@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'your-default-password')
 DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER', 'shahithu2004@gmail.com')
