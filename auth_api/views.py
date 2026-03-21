@@ -1653,26 +1653,17 @@ class Journal2FaceTrackView(APIView):
     def post(self, request):
         try:
             img_file = request.FILES.get('image')
-            if not img_file or not DeepFace:
-                return Response({'emotion': 'neutral'}, status=status.HTTP_200_OK)
+            if not img_file:
+                return Response({'emotion': 'neutral'}, status=status.HTTP_400_BAD_REQUEST)
 
-            import numpy as np
-            import cv2
-            
-            img_bytes = img_file.read()
-            img_np = np.frombuffer(img_bytes, np.uint8)
-            frame = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
-
-            result = DeepFace.analyze(
-                frame,
-                actions=['emotion'],
-                enforce_detection=False
-            )
-            dominant = result[0]['dominant_emotion']
-            print(f"DeepFace Continuous Tracked Emotion: {dominant.upper()}")
+            # Send the image directly to Hugging Face ML Server!
+            dominant, confidence, _ = ml_client.predict_face(img_file)
+            print(f"HuggingFace Continuous Tracked Emotion: {dominant.upper()} (Conf: {confidence})")
             
             return Response({'emotion': dominant}, status=status.HTTP_200_OK)
         except Exception as e:
+            print(f"Face track error: {e}")
+            return Response({'emotion': 'neutral'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             print(f"J2 Continuous Face Error: {e}")
             return Response({'emotion': 'neutral'}, status=status.HTTP_200_OK)
 
@@ -1708,7 +1699,7 @@ class Journal2View(APIView):
                         face_raw_probs[emo] = count / total
                 else:
                     face_emotion = tracked_face_emotion_raw # Fallback if single string
-            elif image_data and DeepFace:
+            elif image_data:
                 try:
                     import base64
                     import io
@@ -1719,16 +1710,11 @@ class Journal2View(APIView):
                         img_str = image_data
                         
                     img_bytes = base64.b64decode(img_str)
-                    img_np = np.frombuffer(img_bytes, np.uint8)
-                    frame = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
-
-                    # Face emotion
-                    result = DeepFace.analyze(
-                        frame,
-                        actions=['emotion'],
-                        enforce_detection=False
-                    )
-                    face_emotion = result[0]['dominant_emotion']
+                    
+                    # Instead of running DeepFace locally, send the bytes directly to the ML Server!
+                    image_file_obj = io.BytesIO(img_bytes)
+                    ext_f_emotion, _, face_raw_probs = ml_client.predict_face(image_file_obj)
+                    face_emotion = ext_f_emotion
                         
                 except Exception as e:
                     print(f"Journal2 Face Error: {e}")
