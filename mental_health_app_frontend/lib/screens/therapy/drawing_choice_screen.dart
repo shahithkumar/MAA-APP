@@ -5,6 +5,7 @@ import 'drawing_canvas_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/gradient_button.dart';
+import '../art_therapy_screen.dart';
 
 class DrawingChoiceScreen extends StatefulWidget {
   const DrawingChoiceScreen({super.key});
@@ -17,7 +18,7 @@ class _DrawingChoiceScreenState extends State<DrawingChoiceScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _sessions = [];
   bool _isLoading = true;
-  String? _selectedMode; // 'Free' or 'Prompt'
+  String? _selectedMode; // 'Free', 'Prompt', or 'Coloring'
   int? _selectedSessionId;
 
   @override
@@ -42,6 +43,14 @@ class _DrawingChoiceScreenState extends State<DrawingChoiceScreen> {
   }
 
   void _startDrawing() {
+    if (_selectedMode == 'Coloring') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ArtTherapyScreen()),
+      );
+      return;
+    }
+
     if (_selectedMode == 'Free') {
        if (_selectedSessionId == null && _sessions.isNotEmpty) {
            _selectedSessionId = _sessions.first['id']; 
@@ -104,6 +113,14 @@ class _DrawingChoiceScreenState extends State<DrawingChoiceScreen> {
               // Mode Selection
               Row(
                 children: [
+                   Expanded(
+                    child: _buildModeCard(
+                      title: 'Coloring', 
+                      icon: Icons.format_paint_rounded, 
+                      mode: 'Coloring'
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildModeCard(
                       title: 'Free Draw', 
@@ -111,7 +128,7 @@ class _DrawingChoiceScreenState extends State<DrawingChoiceScreen> {
                       mode: 'Free'
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildModeCard(
                       title: 'Guided', 
@@ -195,7 +212,7 @@ class _DrawingChoiceScreenState extends State<DrawingChoiceScreen> {
     return GestureDetector(
       onTap: () => setState(() {
         _selectedMode = mode;
-        if (mode == 'Free') _selectedSessionId = null;
+        if (mode == 'Free' || mode == 'Coloring') _selectedSessionId = null;
       }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

@@ -21,3 +21,6 @@ gunicorn
 whitenoise
 dj-database-url
 django-anymail[sendgrid]
+django-import-export
+django-cloudinary-storage
+cloudinary

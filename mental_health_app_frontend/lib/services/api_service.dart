@@ -8,7 +8,7 @@ import 'dart:typed_data';
 
 class ApiService {
   final _storage = const FlutterSecureStorage();
-  static String _baseUrl = 'http://10.123.238.189:8000'; 
+  static String _baseUrl = 'https://maa-backend-u6e5.onrender.com'; 
   String get baseUrl => _baseUrl;
 
   // Initialize URL from storage on startup
@@ -16,10 +16,10 @@ class ApiService {
     final savedUrl = await _storage.read(key: 'server_ip');
     if (savedUrl != null && savedUrl.isNotEmpty) {
       // FORCE MIGRATION: If old IP is found, ignore it and use the new default
-      if (savedUrl.contains('10.64.217.189') || savedUrl.contains('192.168.48.146') || savedUrl.contains('192.168.48.147') || savedUrl.contains('192.168.61.204') || savedUrl.contains('192.168.48.177') || savedUrl.contains('10.20.228.189') || savedUrl.contains('10.142.80.189')) {
+      if (savedUrl.contains('10.64.217.189') || savedUrl.contains('10.123.238.189') || savedUrl.contains('192.168.48.146') || savedUrl.contains('192.168.48.147') || savedUrl.contains('192.168.61.204') || savedUrl.contains('192.168.48.177') || savedUrl.contains('10.20.228.189') || savedUrl.contains('10.142.80.189')) {
         print('⚠️ Detected old invalid IP in storage. Overwriting with new default.');
         await _storage.delete(key: 'server_ip'); // Clear it so it uses default
-        _baseUrl = 'http://10.123.238.189:8000'; // Enforce new one
+        _baseUrl = 'https://maa-backend-u6e5.onrender.com'; // Enforce new one
       } else {
         _baseUrl = savedUrl.trim();
         print('✅ Loaded saved server URL: $_baseUrl');

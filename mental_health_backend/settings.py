@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     'auth_api',
     'chatbot',
     'anymail',
+    'import_export', # Added for mass data upload
+    'cloudinary_storage', # Added for cloud storage
+    'cloudinary',
 ]
 
 MIDDLEWARE = [
@@ -107,7 +110,15 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles' # Required for production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files (Uploaded files)
+# Cloudinary Permanent Storage Config
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+}
+
+# Media files (Uploaded files) - NOW PERMANENT ON CLOUDINARY
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

@@ -23,6 +23,7 @@ import 'journal2_screen.dart';
 import 'maa_chat_screen.dart';
 import 'therapy/therapy_home_screen.dart';
 import 'therapy/art_therapy_home.dart';
+import 'art_therapy_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   DashboardScreen({super.key});
