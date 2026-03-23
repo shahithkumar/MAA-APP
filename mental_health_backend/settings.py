@@ -26,6 +26,7 @@ ALLOWED_HOSTS = ['*'] # Allow all for now to simplify deployment debugging, or r
 
 # Application definition
 INSTALLED_APPS = [
+    'cloudinary_storage', # MUST be before django.contrib.staticfiles
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -39,7 +40,6 @@ INSTALLED_APPS = [
     'chatbot',
     'anymail',
     'import_export', # Added for mass data upload
-    'cloudinary_storage', # Added for cloud storage
     'cloudinary',
 ]
 

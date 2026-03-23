@@ -196,21 +196,25 @@ class ApiService {
     try {
       final token = await _storage.read(key: 'jwt_token');
       if (token == null) throw Exception('No JWT token found');
+      print('🔍 DEBUG: Fetching meditations from $_baseUrl/api/meditations/');
       final response = await http.get(
         Uri.parse('$_baseUrl/api/meditations/'),
         headers: {'Authorization': 'Bearer $token'},
       );
+      print('🔍 DEBUG: Meditations Response Code: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
+        print('🔍 DEBUG: Found ${data.length} meditation sessions');
         for (var item in data) {
           item['category_id'] = item['category_id'] ?? null;
         }
         return data;
       } else {
+        print('❌ DEBUG: Meditations Error Body: ${response.body}');
         throw Exception('Failed to load meditations: ${response.body}');
       }
     } catch (e) {
-      print('Get meditations error: $e');
+      print('❌ DEBUG: getMeditationSessions Exception: $e');
       rethrow;
     }
   }

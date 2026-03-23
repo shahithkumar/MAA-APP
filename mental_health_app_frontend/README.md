@@ -50,6 +50,8 @@ python manage.py runserver 0.0.0.0:8000
    "C:\Users\shahi\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r "build\app\outputs\flutter-apk\app-release.apk"
    ```
 
+TO INSTALL IN PHONE:
 
+"C:\Users\shahi\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r "build\app\outputs\flutter-apk\app-release.apk"
 
 

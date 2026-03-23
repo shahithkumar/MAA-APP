@@ -70,8 +70,9 @@ class _MeditationDetailScreenState extends State<MeditationDetailScreen> {
       if (_isPlaying) {
         await _audioPlayer.pause();
       } else if (_meditation?['audio_file'] != null) {
-        String path = _meditation!['audio_file'];
+        String path = _meditation!['audio_file'] as String;
         final String fullUrl = path.startsWith('http') ? path : '${_apiService.baseUrl}$path';
+        print('🔊 DEBUG: Playing Audio from: $fullUrl');
         await _audioPlayer.play(UrlSource(fullUrl));
       }
     } catch (e) {
@@ -99,6 +100,7 @@ class _MeditationDetailScreenState extends State<MeditationDetailScreen> {
       ),
       body: Container(
         width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -113,22 +115,26 @@ class _MeditationDetailScreenState extends State<MeditationDetailScreen> {
         child: _meditation == null
             ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
             : SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildHeader(),
-                      const Spacer(),
-                      _buildArtwork(),
-                      const Spacer(),
-                      _buildTrackInfo(),
-                      const SizedBox(height: 40),
-                      _buildProgressBar(),
-                      const SizedBox(height: 40),
-                      _buildControls(),
-                      const SizedBox(height: 60),
-                    ],
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 20),
+                        _buildHeader(),
+                        const SizedBox(height: 40),
+                        _buildArtwork(),
+                        const SizedBox(height: 40),
+                        _buildTrackInfo(),
+                        const SizedBox(height: 40),
+                        _buildProgressBar(),
+                        const SizedBox(height: 40),
+                        _buildControls(),
+                        const SizedBox(height: 60),
+                      ],
+                    ),
                   ),
                 ),
               ),
