@@ -1,6 +1,17 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.files.storage import FileSystemStorage
+import os
+
+try:
+    if os.getenv('CLOUDINARY_API_KEY'):
+        from cloudinary_storage.storage import VideoMediaCloudinaryStorage
+        AudioStorage = VideoMediaCloudinaryStorage()
+    else:
+        AudioStorage = FileSystemStorage()
+except ImportError:
+    AudioStorage = FileSystemStorage()
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -38,7 +49,7 @@ class MeditationSession(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     duration = models.IntegerField()
-    audio_file = models.FileField(upload_to='meditations/')
+    audio_file = models.FileField(upload_to='meditations/', storage=AudioStorage, blank=True, null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     emoji = models.CharField(max_length=10, blank=True, null=True)
     guidance_text = models.TextField(blank=True, null=True, help_text="Text to display on screen during meditation")
@@ -51,7 +62,7 @@ class YogaSession(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     duration = models.IntegerField()
-    audio_file = models.FileField(upload_to='yoga/')
+    audio_file = models.FileField(upload_to='yoga/', storage=AudioStorage, blank=True, null=True)
     type = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     emoji = models.CharField(max_length=10, blank=True, null=True)
     video_url = models.URLField(blank=True, null=True, help_text="YouTube Video URL")
@@ -70,7 +81,7 @@ class UserPreferences(models.Model):
 
 class BackgroundMusic(models.Model):
     title = models.CharField(max_length=200)
-    audio_file = models.FileField(upload_to='background_music/')
+    audio_file = models.FileField(upload_to='background_music/', storage=AudioStorage, blank=True, null=True)
     emoji = models.CharField(max_length=10, blank=True, null=True)
 
     def __str__(self):
@@ -110,7 +121,7 @@ class StressBusterSession(models.Model):
     session_type = models.CharField(max_length=100, default="unknown")
     duration = models.IntegerField(default=0)
     note_text = models.TextField(blank=True, null=True)
-    voice_file = models.FileField(upload_to='stress_buster/', null=True, blank=True)
+    voice_file = models.FileField(upload_to='stress_buster/', storage=AudioStorage, null=True, blank=True)
     feedback = models.TextField(blank=True, null=True)
     end_time = models.DateTimeField(default=timezone.now)
 
@@ -218,7 +229,7 @@ class MusicCategory(models.Model):
 class MusicTrack(models.Model):
     title = models.CharField(max_length=200)
     category = models.ForeignKey(MusicCategory, on_delete=models.CASCADE, related_name='tracks')
-    audio_file = models.FileField(upload_to='music_tracks/')  # Changed to FileField for uploads
+    audio_file = models.FileField(upload_to='music_tracks/', storage=AudioStorage, blank=True, null=True)  # Changed to FileField for uploads
     duration = models.IntegerField(default=0)  # seconds
     emoji = models.CharField(max_length=10, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -330,7 +341,7 @@ class EmotionLog(models.Model):
 class EmotionJournal(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     text = models.TextField(blank=True)
-    voice = models.FileField(upload_to='journal/voice/', null=True, blank=True)
+    voice = models.FileField(upload_to='journal/voice/', storage=AudioStorage, null=True, blank=True)
     face_image = models.ImageField(upload_to='journal/face/', null=True, blank=True)
     voice_emotion = models.CharField(max_length=20, blank=True, null=True)
     text_emotion = models.CharField(max_length=20, blank=True, null=True)
@@ -345,7 +356,7 @@ class EmotionJournal(models.Model):
 class Journal2Entry(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     text_content = models.TextField(blank=True)
-    voice_file = models.FileField(upload_to='journal2/voice/', null=True, blank=True)
+    voice_file = models.FileField(upload_to='journal2/voice/', storage=AudioStorage, null=True, blank=True)
     face_capture = models.ImageField(upload_to='journal2/face/', null=True, blank=True)
     
     face_emotion = models.CharField(max_length=50, blank=True)
@@ -370,7 +381,7 @@ class TherapySession(models.Model):
     therapy_type = models.CharField(max_length=20, choices=THERAPY_TYPES)
     
     # For Music
-    audio_file = models.FileField(upload_to='therapy_music/', blank=True, null=True)
+    audio_file = models.FileField(upload_to='therapy_music/', storage=AudioStorage, blank=True, null=True)
     duration = models.IntegerField(default=0, help_text="Duration in seconds (for music)")
     
     # For Drawing
