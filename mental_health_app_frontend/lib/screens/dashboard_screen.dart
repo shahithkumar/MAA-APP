@@ -20,6 +20,7 @@ import 'affirmations_home.dart';
 import 'cbt_therapy/cbt_topics_screen.dart';
 import 'resources_hub/disorder_selection.dart';
 import 'journal2_screen.dart';
+import 'journal2_plan_screen.dart';
 import 'maa_chat_screen.dart';
 import 'therapy/therapy_home_screen.dart';
 import 'therapy/art_therapy_home.dart';
@@ -45,11 +46,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Map<String, dynamic>? _lastMood;
   bool _isMoodLoading = true;
+  
+  Map<String, dynamic>? _aiPlanData;
+  String? _aiPlanEmotion;
+  bool _hasPlan = false;
 
   @override
   void initState() {
     super.initState();
     _fetchMoodData();
+    _fetchPlanData();
+  }
+
+  Future<void> _fetchPlanData() async {
+    try {
+      final data = await _apiService.getJournal2LatestPlan();
+      if (data != null && data['has_plan'] == true) {
+        setState(() {
+          _hasPlan = true;
+          _aiPlanData = data['plan'];
+          _aiPlanEmotion = data['emotion'];
+        });
+      } else {
+        setState(() {
+          _hasPlan = false;
+          _aiPlanData = null;
+        });
+      }
+    } catch (e) {
+      print('Error fetching AI plan: $e');
+    }
   }
 
   Future<void> _fetchMoodData() async {
@@ -69,13 +95,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _openJournal2() {
-    Navigator.push(
+  void _openJournal2() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const Journal2Screen(cameras: []), 
       ),
     );
+    // Refresh the plan when returning
+    _fetchPlanData();
   }
 
   @override
@@ -157,6 +185,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _buildMoodSelector(),
 
                   const SizedBox(height: 32),
+
+                  // AI Plan Banner
+                  if (_hasPlan && _aiPlanData != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Journal2PlanScreen(
+                                planData: _aiPlanData!,
+                                emotion: _aiPlanEmotion ?? "neutral",
+                              ),
+                            )
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: AppTheme.mellowYellow,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AppTheme.accentColor, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.accentColor.withOpacity(0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              )
+                            ]
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Text("✨", style: TextStyle(fontSize: 24)),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "MAA's Action Plan",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "You're feeling ${_aiPlanEmotion ?? 'neutral'}. View your recommended coping steps.",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 14,
+                                        color: AppTheme.textDark.withOpacity(0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.primaryColor, size: 16),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // 3️⃣ Hero Card: "Talk to MAA"
                   GestureDetector(

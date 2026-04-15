@@ -1656,4 +1656,26 @@ Future<Map<String, dynamic>> saveJournal2({
       rethrow;
     }
   }
+
+  // MARK: Journal 2 AI Plan
+  Future<Map<String, dynamic>> getJournal2LatestPlan() async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
+      if (token == null) throw Exception('No JWT token found');
+      
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/journal/2/plan/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to load plan: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Get plan error: $e');
+      return {'has_plan': false};
+    }
+  }
 }

@@ -1817,6 +1817,56 @@ class Journal2View(APIView):
                 print(f"⚠️ Error auto-logging mood: {mood_err}")
             # ------------------------------
 
+            # --- AI PLAN GENERATION ---
+            ai_plan = None
+            try:
+                from langchain_groq import ChatGroq
+                import os, json
+                
+                api_key = getattr(settings, 'GROQ_API_KEY', None) or os.getenv('GROQ_API_KEY')
+                if api_key and (text or final_emotion != "neutral"):
+                    llm = ChatGroq(
+                        api_key=api_key,
+                        model_name=os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant'),
+                        temperature=0.7
+                    )
+                    
+                    prompt = f"""
+                    The user just journaled and their detected emotion is {final_emotion}.
+                    Their optional journal text: "{text}"
+                    
+                    Create a quick, compassionate 3-step action plan to help them handle this emotion using ONLY these exact modules from our app:
+                    [Meditation & Yoga, Therapy Room, Stress Buster, Resources, Affirmations, CBT Therapy, Talk to MAA AI].
+                    
+                    Output ONLY valid JSON in this exact format:
+                    {{
+                        "intro": "A short, empathetic line validating their feeling.",
+                        "steps": [
+                            {{"module": "Exact Module Name from list", "action": "One sentence explaining why/how to use it."}}
+                        ]
+                    }}
+                    """
+                    
+                    response = llm.invoke(prompt)
+                    plan_text = response.content.strip()
+                    
+                    start = plan_text.find('{')
+                    end = plan_text.rfind('}')
+                    if start != -1 and end != -1:
+                        plan_text = plan_text[start:end+1]
+                        
+                    parsed_plan = json.loads(plan_text)
+                    
+                    analysis = entry.analysis_data or {}
+                    analysis["ai_plan"] = parsed_plan
+                    entry.analysis_data = analysis
+                    entry.save()
+                    ai_plan = parsed_plan
+                    print("✅ Successfully generated AI Plan for Journal 2")
+            except Exception as plan_err:
+                print(f"⚠️ Error generating AI plan: {plan_err}")
+            # --------------------------
+
             return Response({
                 "id": entry.id,
                 "face_emotion": face_emotion,
@@ -1843,6 +1893,25 @@ class Journal2View(APIView):
             "created_at": e.created_at
         } for e in entries]
         return Response(data)
+
+class Journal2LatestPlanView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Get the most recent entry
+            entry = Journal2Entry.objects.filter(user=request.user).order_by('-created_at').first()
+            if entry and entry.analysis_data and "ai_plan" in entry.analysis_data:
+                return Response({
+                    "has_plan": True,
+                    "date": entry.created_at,
+                    "emotion": entry.final_emotion,
+                    "plan": entry.analysis_data["ai_plan"]
+                }, status=status.HTTP_200_OK)
+            return Response({"has_plan": False}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class TriModalJournalView(APIView):
     parser_classes = [MultiPartParser]
 
