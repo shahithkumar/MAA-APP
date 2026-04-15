@@ -1678,29 +1678,4 @@ Future<Map<String, dynamic>> saveJournal2({
       return {'has_plan': false};
     }
   }
-
-  Future<Map<String, dynamic>> analyzeArtwork(String base64Image) async {
-    try {
-      final token = await _storage.read(key: 'jwt_token');
-      if (token == null) throw Exception('No JWT token found');
-      
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/art-therapy/analyze/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'image_base64': base64Image}),
-      );
-      
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Analysis failed: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Art analysis error: $e');
-      rethrow;
-    }
-  }
 }

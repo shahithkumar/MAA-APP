@@ -3,12 +3,6 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:xml/xml.dart' as xml;
 import 'package:path_drawing/path_drawing.dart';
 import 'package:http/http.dart' as http;
-import 'dart:ui' as ui;
-import 'dart:convert';
-import '../services/api_service.dart';
-import '../widgets/glass_card.dart';
-import '../theme/app_theme.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ArtTherapyScreen extends StatefulWidget {
   @override
@@ -20,9 +14,7 @@ class _ArtTherapyScreenState extends State<ArtTherapyScreen> {
   List<ColoringPath> _paths = [];
   Color _selectedColor = Colors.blue; // Default brush
   bool _isLoading = true;
-  bool _isAnalyzing = false;
   int _currentSvgIndex = 0;
-  final GlobalKey _canvasKey = GlobalKey();
   
   final List<Map<String, String>> _svgAssets = [
     {'path': 'assets/images/mandala_zen.svg', 'name': 'Zen Mandala'},
@@ -174,11 +166,6 @@ class _ArtTherapyScreenState extends State<ArtTherapyScreen> {
                });
             },
           ),
-          IconButton(
-            icon: Icon(Icons.auto_awesome, color: Colors.amber.shade300),
-            tooltip: "AI Analysis",
-            onPressed: _isAnalyzing ? null : _analyzeArtwork,
-          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -244,11 +231,8 @@ class _ArtTherapyScreenState extends State<ArtTherapyScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
                           ),
-                          child: RepaintBoundary(
-                            key: _canvasKey,
-                            child: CustomPaint(
-                              painter: SVGPainter(paths: _paths),
-                            ),
+                          child: CustomPaint(
+                            painter: SVGPainter(paths: _paths),
                           ),
                         ),
                       ),
@@ -292,99 +276,6 @@ class _ArtTherapyScreenState extends State<ArtTherapyScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Future<void> _analyzeArtwork() async {
-    setState(() => _isAnalyzing = true);
-    try {
-      // 1. Capture the canvas as image
-      ui.RenderRepaintBoundary boundary = _canvasKey.currentContext!.findRenderObject() as ui.RenderRepaintBoundary;
-      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      Uint8List pngBytes = byteData!.buffer.asUint8List();
-      String base64Image = base64Encode(pngBytes);
-
-      // 2. Call API
-      final result = await ApiService().analyzeArtwork(base64Image);
-      
-      if (mounted) {
-        _showAnalysisModal(result['analysis']);
-      }
-    } catch (e) {
-      debugPrint("Analysis error: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Analysis failed: $e"), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isAnalyzing = false);
-    }
-  }
-
-  void _showAnalysisModal(String analysis) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(32),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 50, height: 4, 
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))
-              ),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.amber.shade50, shape: BoxShape.circle),
-                  child: Icon(Icons.auto_awesome, color: Colors.amber.shade700, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  "MAA's Interpretation",
-                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Text(
-              analysis,
-              style: GoogleFonts.outfit(
-                fontSize: 18, 
-                color: AppTheme.textDark.withOpacity(0.8), 
-                height: 1.6,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text("Thank You", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
