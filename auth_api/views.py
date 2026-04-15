@@ -1674,15 +1674,28 @@ class Journal2View(APIView):
 
     def post(self, request):
         try:
+            print("\n" + "="*50)
+            print("🚀 [Backend] Journal2 API CALLED")
+            print(f"Data fields: {list(request.data.keys())}")
+            print(f"Files uploaded: {list(request.FILES.keys())}")
+
             image_data = request.data.get("image") # Base64 string
             text = request.data.get("text", "")
-            voice_file = request.FILES.get("voice") # Uploaded audio file
+            voice_file = request.FILES.get("voice") or request.FILES.get("audio") # Fallback to "audio" key like in TriModalJournal
+            
+            print(f"Text received: '{text[:50]}...' (len: {len(text)})")
+            print(f"Image data received: {bool(image_data)}")
+            if voice_file:
+                print(f"Voice file received: {voice_file.name} (size: {voice_file.size} bytes)")
+            else:
+                print("⚠️ NO Voice file found in request!")
 
             face_emotion = "neutral"
             text_emotion = "neutral"
             voice_emotion = "neutral"
             
             tracked_face_emotion_raw = request.data.get("tracked_face_emotion")
+            print(f"Tracked face emotion raw: '{tracked_face_emotion_raw}'")
 
             face_raw_probs = {}
             # 1. Process Face (DeepFace) - Using USER's logic
@@ -1715,6 +1728,7 @@ class Journal2View(APIView):
                     image_file_obj = io.BytesIO(img_bytes)
                     ext_f_emotion, _, face_raw_probs = ml_client.predict_face(image_file_obj)
                     face_emotion = ext_f_emotion
+                    print(f"🧠 Face emotion predicted from uploaded image: {face_emotion}")
                         
                 except Exception as e:
                     print(f"Journal2 Face Error: {e}")
@@ -1724,12 +1738,15 @@ class Journal2View(APIView):
             if text:
                 ext_emotion, _, text_raw_probs = ml_client.predict_text(text)
                 text_emotion = ext_emotion
+                print(f"🧠 Text emotion predicted: {text_emotion}")
 
             # 3. Process Voice (Existing ML Model)
             voice_raw_probs = {}
             if voice_file:
+                voice_file.seek(0)
                 ext_v_emotion, _, voice_raw_probs = ml_client.predict_audio(voice_file)
                 voice_emotion = ext_v_emotion
+                print(f"🧠 Voice emotion predicted: {voice_emotion}")
 
             # Final Fusion Logic per USER: Weighted Average / Mode of available signals
             valid_emotions = []
@@ -1755,7 +1772,11 @@ class Journal2View(APIView):
                 else:
                     final_emotion = most_common[0]
 
+            print(f"⭐ Final Tri-Modal Emotion: {final_emotion}")
+
             # Save the entry
+            if voice_file:
+                voice_file.seek(0)
             entry = Journal2Entry.objects.create(
                 user=request.user,
                 text_content=text,
