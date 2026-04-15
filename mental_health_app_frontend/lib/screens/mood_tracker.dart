@@ -49,12 +49,9 @@ class _MoodTrackerScreenState extends State<MoodTrackerScreen> {
         final mood = _moods.firstWhere((m) => 
             m['val'].toString().toLowerCase() == initial || 
             m['label'].toString().toLowerCase() == initial);
-        _selectedMoodVal = mood['val'];
-        _selectedMoodLabel = mood['label'];
-        
-        // Auto-save the mood when arriving from Journal 2
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _saveMood(isAutoSave: true);
+        setState(() {
+          _selectedMoodVal = mood['val'];
+          _selectedMoodLabel = mood['label'];
         });
       } catch (e) {
         // Initial mood not found in our list, just stay null

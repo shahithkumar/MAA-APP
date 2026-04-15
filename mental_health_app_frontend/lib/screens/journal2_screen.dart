@@ -483,15 +483,10 @@ class _Journal2ScreenState extends State<Journal2Screen> with TickerProviderStat
   
                  const SizedBox(height: 40), 
                  GradientButton(
-                   text: "Complete & Track Mood",
+                   text: "Finish & See AI Plan",
                    onPressed: () {
                      Navigator.pop(context); // Close modal
-                     Navigator.pop(context); // Go back to home/dashboard
-                     // Navigate to mood tracker so user sees connection immediately
-                     Navigator.push(
-                       context,
-                       MaterialPageRoute(builder: (context) => MoodTrackerScreen(initialMood: _finalEmotion)),
-                     );
+                     Navigator.pop(context); // Go back to dashboard
                    },
                  ),
                  const SizedBox(height: 16),
