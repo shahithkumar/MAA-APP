@@ -1,115 +1,74 @@
-# System Architecture
+# System Architecture: MAA Mental Health App
 
-## 1. High-Level Overview
+## 🏗️ 1. Architecture Overview
+This application utilizes a modern, multi-tiered architecture that separates the user interface, routing logic, machine learning inference, and data storage into distinct, scalable components. 
 
-The Mental Health App helps users track their mental well-being through a tri-modal approach (Text, Audio, Video). It consists of three main coupled components:
-
-1.  **Mobile/Web Frontend (Flutter)**: The user interface.
-2.  **Backend API (Django)**: Handles business logic, database, and authentication.
-3.  **ML Inference Server (FastAPI)**: A dedicated high-performance server for AI analysis.
+Below is a visual representation of the architecture:
 
 ```mermaid
 graph TD
-    Client[Flutter App] <-->|HTTP/REST| Backend[Django Backend :8000]
-    Backend <-->|Internal HTTP| ML[ML Inference Server :8001]
-    Backend <-->|SQL| DB[(PostgreSQL)]
-    ML -->|Load| Models[AI Models]
+    %% Frontend
+    subgraph Frontend ["Frontend (User Interface)"]
+        F1((Flutter App))
+        F1 -.- F2[Mobile: Android & iOS]
+        F1 -.- F3[Web Browser]
+        F1_Tech[Dart / Flutter]
+    end
+
+    %% Backend API
+    subgraph Backend ["Core Backend (Render)"]
+        B1[Django REST Framework]
+        B2[Authentication Auth API]
+        B3[Content Serving API]
+        B4[Chatbot Router]
+        B1_Tech[Python / Gunicorn]
+        
+        B1 --- B2 & B3 & B4
+    end
+
+    %% External & ML Services
+    subgraph ExternalServices ["External Nodes & AI"]
+        E1[Cloudinary<br>Media Storage]
+        E2[(PostgreSQL<br>Database)]
+        E3[Groq LLM API<br>Llama 3]
+        
+        subgraph MLServer ["ML Inference Server"]
+            ML1[FastAPI / Uvicorn]
+            ML2[Wav2Vec2 Voice Emotion]
+            ML3[RoBERTa Text Emotion]
+        end
+    end
+
+    %% Connections
+    F1 <==>|REST API / JSON<br>JWT Authentication| B1
+    F1 ==>|Stream Audio / Load Images<br>Format: MP3/JPG| E1
+    
+    B1 ==>|Read / Write Data| E2
+    B1 ==>|Upload User Media| E1
+    
+    B4 <==>|Prompt Generation| E3
+    B1 <==>|Voice/Face ML Analysis| ML1
 ```
 
 ---
 
-## 2. Technology Stack
+## 📚 2. System Components Breakdown
 
-| Component | Technology | Key Libraries |
-| :--- | :--- | :--- |
-| **Frontend** | Flutter (Dart) | `http`, `flutter_secure_storage`, `audioplayers`, `camera`, `fl_chart`, `google_fonts` |
-| **Backend** | Django 4.2 (Python) | `djangorestframework`, `simplejwt`, `corsheaders`, `dj_database_url`, `whitenoise` |
-| **ML Server** | FastAPI (Python) | `uvicorn`, `torch` (PyTorch), `transformers`, `librosa`, `opencv`, `deepface` |
-| **Database** | PostgreSQL | `psycopg2-binary` |
+### A. The Client Tier (Frontend)
+* **Technology:** Flutter (Dart)
+* **Role:** The beautiful, interactive face of your app. It handles UI rendering, smooth animations (like breathing exercises), audio playback, and local device capabilities.
+* **Platforms:** Runs natively on Android, iOS, and Web environments.
 
----
+### B. The Application Tier (Core Backend)
+* **Technology:** Django & Django REST Framework (DRF)
+* **Hosting:** Render
+* **Role:** The central "brain" connecting all micro-services. It provides the RESTful APIs that the Flutter app talks to. It handles secure user logins (JWT Tokens), fetches your seeded content (Yoga, Meditation, CBT), and delegates analytical tasks.
 
-## 3. Component Architecture
+### C. The Intelligence Tier (AI & ML)
+The application utilizes a highly advanced **Dual-AI Architecture**:
+* **Generative AI:** The Django backend connects to the **Groq API (Llama 3)** to power your fast Therapy Chatbot and provide dynamic Cognitive Behavioral Therapy (CBT) session feedback.
+* **Inference Server:** A custom, separate ML server (`ml_inference_server`) that runs **PyTorch** models. It isolates heavy processing (`wav2vec2` for voice and `roberta` for text) dedicated strictly to classifying human emotions.
 
-### A. Frontend (Flutter App)
-The frontend is built with Flutter to support both Mobile (Android/iOS) and Web.
-
-*   **Authentication**: Uses JWT (JSON Web Tokens). Tokens are stored securely using `flutter_secure_storage`.
-*   **Services Layer**:
-    *   `ApiService`: Centralized class for all HTTP requests. Automatically handles base URL switching and token injection.
-*   **Modules**:
-    *   **Auth**: Login, Signup, Forgot Password.
-    *   **Dashboard**: Main hub with navigation.
-    *   **Mood Tracker**: Emoji-based logging with tags and notes.
-    *   **Chatbot**: Interface for chatting with the AI assistant.
-    *   **Stress Buster**: Records audio/video journal entries for AI analysis.
-    *   **Resources**: Affirmations, Meditations (Audio), Yoga (Video).
-
-### B. Backend API (Django)
-The Django backend acts as the orchestrator. It manages user data and proxies complex AI tasks to the ML server.
-
-*   **Port**: `8000`
-*   **Key Apps**:
-    *   `auth_api`: Custom User model, Registration with Medical History field, Guardian details.
-    *   `mood_tracker`: CRUD operations for mood logs.
-    *   `chatbot`: Stores chat history and connects to external LLM APIs (e.g., Groq) if configured, or uses internal logic.
-    *   `affirmations`: Delivers categorized and generic affirmations.
-*   **Security**:
-    *   `CORS`: Configured to allow mobile/web clients.
-    *   `JWT`: `rest_framework_simplejwt` for stateless authentication.
-
-### C. ML Inference Server (FastAPI)
-A lightweight, async server dedicated to running heavy PyTorch models.
-
-*   **Port**: `8001`
-*   **Core Logic (`main.py`)**:
-    *   **Async/Parallel Inference**: Uses `asyncio` to run Face, Voice, and Text analysis concurrently to reduce latency.
-*   **Endpoints**:
-    *   `/predict/face`: Analyzes facial expressions from images.
-    *   `/predict/audio`: Analyzes vocal prosody/emotion from audio files.
-    *   `/predict/text`: Analyzes sentiment/emotion from text.
-    *   `/predict/multimodal`: accepts all three inputs, runs them in parallel, and fuses the results.
-*   **Fusion Logic**:
-    *   Weighted averaging of probabilities from the three models to produce a final emotional state (e.g., "70% Happy, 30% Neutral").
-
----
-
-## 4. Data Flow Examples
-
-### Scenario: User submits a "Stress Buster" Journal Entry
-
-1.  **Capture**: The **Flutter App** records the user's voice (audio), captures a selfie (image), and asks for a text note.
-2.  **Upload**: The App sends a `POST` request to Django's `/api/sessions/stress-buster/` endpoint with the files and text.
-3.  **Processing (Django)**:
-    *   Django saves the raw session data in PostgreSQL.
-    *   Django makes an internal HTTP `POST` request to the **ML Server**'s `/predict/multimodal` endpoint.
-4.  **Inference (ML Server)**:
-    *   **Face Model**: Detects emotion from the image (e.g., Sad).
-    *   **Voice Model**: Detects emotion from the audio wave (e.g., Fear).
-    *   **Text Model**: Detects sentiment from the note (e.g., Negative).
-    *   **Fusion**: Combines these into a detailed report.
-5.  **Response**: The ML Server returns the analysis to Django.
-6.  **Storage**: Django updates the session record with the AI feedback.
-7.  **Feedback**: Django responds to the Flutter App, which displays the AI's analysis and recommendations to the user.
-
----
-
-## 5. Directory Structure
-
-```text
-Root/
-├── mental_health_app_frontend/    # Flutter Code
-│   ├── lib/
-│   │   ├── services/              # API and logic
-│   │   ├── screens/               # UI Pages
-│   │   └── widgets/               # Reusable UI components
-├── mental_health_backend/         # Django Project Root
-│   ├── auth_api/                  # User Management
-│   ├── mood_tracker/              # Mood Logic
-│   └── ...
-├── ml_inference_server/           # FastAPI Project
-│   ├── models/                    # .pt PyTorch models
-│   ├── services/                  # Inference logic (inference.py, fusion.py)
-│   └── main.py                    # Server entry point
-└── manage.py                      # Django entry point
-```
+### D. The Data & Storage Tier
+* **Relational Database:** **PostgreSQL** (Hosted on Render). Stores all relational user data, streaks, journal entries, and content definitions text.
+* **Blob Media Storage:** **Cloudinary**. A specialized server that handles heavy media files forever. It securely stores MP3 meditation clips, user profile pictures, and therapy drawing images outside of the main Render server, ensuring maximum bandwidth and application speed.
