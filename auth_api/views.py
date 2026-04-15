@@ -1912,6 +1912,67 @@ class Journal2LatestPlanView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ArtTherapyAnalysisView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Analyze art therapy drawing using AI and return emotional insights."""
+        try:
+            import os, json
+            from langchain_groq import ChatGroq
+
+            image_data = request.data.get('image_base64', '')
+            notes = request.data.get('notes', '')
+            colors_used = request.data.get('colors_used', '')
+
+            if not image_data and not notes and not colors_used:
+                return Response({"error": "Please provide drawing data (image, notes, or colors)."}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            api_key = getattr(settings, 'GROQ_API_KEY', None) or os.getenv('GROQ_API_KEY')
+            if not api_key:
+                return Response({
+                    "emotion": "neutral",
+                    "analysis": "AI analysis is not available right now.",
+                    "suggestions": ["Try journaling about your drawing.", "Reflect on what you created."]
+                }, status=status.HTTP_200_OK)
+
+            llm = ChatGroq(
+                api_key=api_key,
+                model_name=os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant'),
+                temperature=0.7
+            )
+
+            prompt = f"""You are an art therapist AI. The user just completed an art therapy session.
+            Their notes about the drawing: "{notes}"
+            Colors they used: "{colors_used}"
+            
+            Based on their art session, provide emotional insight. Output ONLY valid JSON:
+            {{
+                "emotion": "one word emotion detected (happy/sad/angry/calm/anxious/neutral)",
+                "analysis": "A warm, empathetic 2-3 sentence analysis of their emotional state based on their art.",
+                "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
+            }}"""
+
+            response = llm.invoke(prompt)
+            content = response.content.strip()
+
+            start = content.find('{')
+            end = content.rfind('}')
+            if start != -1 and end != -1:
+                content = content[start:end+1]
+
+            parsed = json.loads(content)
+            return Response(parsed, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Art Therapy Analysis Error: {e}")
+            return Response({
+                "emotion": "neutral",
+                "analysis": "We couldn't analyze your artwork right now, but creating art is always healing.",
+                "suggestions": ["Keep drawing!", "Try different colors next time.", "Share your art with someone you trust."]
+            }, status=status.HTTP_200_OK)
+
 class TriModalJournalView(APIView):
     parser_classes = [MultiPartParser]
 
