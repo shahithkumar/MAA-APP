@@ -1792,6 +1792,31 @@ class Journal2View(APIView):
                 }
             )
 
+            # --- AUTO MOOD LOG CREATION ---
+            try:
+                mood_map = {
+                    "happy":    ("Happy", "😊"),
+                    "sad":      ("Sad", "😢"),
+                    "angry":    ("Angry", "😡"),
+                    "fear":     ("Anxious", "😨"),
+                    "surprise": ("Excited", "😲"),
+                    "disgust":  ("Frustrated", "🤢"),
+                    "neutral":  ("Neutral", "😐")
+                }
+                m_label, m_emoji = mood_map.get(final_emotion.lower(), ("Neutral", "😐"))
+                
+                MoodLog.objects.create(
+                    user=request.user,
+                    mood_emoji=m_emoji,
+                    mood_label=m_label,
+                    note=f"🤖 AI Journal Note: {text[:40]}..." if text else "🤖 AI Journal (Voice/Face Check-in)",
+                    tag="Other"
+                )
+                print(f"✅ Automatically logged mood to Mood Tracker: {m_label} {m_emoji}")
+            except Exception as mood_err:
+                print(f"⚠️ Error auto-logging mood: {mood_err}")
+            # ------------------------------
+
             return Response({
                 "id": entry.id,
                 "face_emotion": face_emotion,
